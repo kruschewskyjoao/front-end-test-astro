@@ -1,0 +1,137 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import Card from "../../components/CardCorrida.astro";
+import corridasData from "../../data/corridas.json";
+
+// Processar dados para obter tipos, países e distâncias únicos
+const types = [
+    ...new Set(corridasData.filter((c) => c.type).map((c) => c.type)),
+];
+const countries = [
+    ...new Set(corridasData.filter((c) => c.country).map((c) => c.country)),
+];
+const allDistances = corridasData.flatMap((c) => c.distances || []);
+const distances = [...new Set(allDistances)];
+
+// Adicionar nível de dificuldade baseado nas distâncias
+const corridasComDificuldade = corridasData.map((corrida) => {
+    let difficulty = "Médio";
+
+    if (corrida.distances && corrida.distances.length > 0) {
+        const maxDistance = Math.max(
+            ...corrida.distances.map((d) => {
+                const match = d.match(/(\d+)/);
+                return match ? parseInt(match[0]) : 0;
+            }),
+        );
+
+        if (maxDistance <= 5) difficulty = "Fácil";
+        else if (maxDistance <= 10) difficulty = "Médio";
+        else if (maxDistance <= 21) difficulty = "Difícil";
+        else difficulty = "Extremo";
+    }
+
+    return { ...corrida, difficulty };
+});
+
+// Ordenar corridas por data decrescente (mais recente primeiro)
+const sortedCorridas = [...corridasComDificuldade].sort((a, b) => {
+    // Converter datas para formato comparável
+    const dateA = new Date(a.date.split("/").reverse().join("/"));
+    const dateB = new Date(b.date.split("/").reverse().join("/"));
+    return dateB.getTime() - dateA.getTime();
+});
+
+// Estados para busca e filtro
+let search = "";
+let selectedType = "";
+
+let filteredCorridas = sortedCorridas.filter((corrida) => {
+    const matchesSearch =
+        search.trim() === "" ||
+        corrida.name.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch;
+});
+---
+
+<Layout
+    title="Todas as Corridas - Corridas Brasil"
+    description="Veja a lista completa de corridas e eventos esportivos no Brasil. Encontre maratonas, meias maratonas, corridas de rua e muito mais."
+    image="/og-image.jpg"
+>
+    <section class="mb-12">
+        <div class="mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h1 class="text-3xl font-bold text-gray-900">Todas as Corridas</h1>
+                    <p class="text-gray-600 dark:text-gray-400 mt-2">{filteredCorridas.length} corridas encontradas • Página 1 de 1</p>
+                </div>
+                <a class="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300" href="/">← Voltar ao Início</a>
+            </div>
+            <form class="flex flex-col sm:flex-row gap-4 mb-6" id="filtros-corridas" autocomplete="off" onsubmit="event.preventDefault();">
+                <div class="flex w-full">
+                    <input
+                        id="busca-corrida"
+                        name="search"
+                        placeholder="Buscar por nome da corrida..."
+                        class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg
+                                 focus:border-blue-500 focus:ring-0 focus:outline-noneborder-[1px] dark:bg-gray-200 dark:border-gray-400 dark:text-black"
+                        type="text"
+                        autocomplete="off"
+                    >
+                    <button type="submit" id="btn-buscar-corrida" class="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors flex items-center justify-center">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </div>
+        <div id="corridas-lista" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
+            {sortedCorridas.map((corrida) => (
+                <div class="corrida-card" data-name={corrida.name.toLowerCase()}>
+                    <Card
+                        name={corrida.name}
+                        type={corrida.type}
+                        distances={corrida.distances}
+                        price={corrida.price}
+                        images={corrida.images}
+                        detailsUrl={corrida.detailsUrl}
+                        saleStatus={corrida.saleStatus}
+                        date={corrida.date}
+                        country={corrida.country}
+                        description={corrida.description}
+                        whatsapp={corrida.whatsapp}
+                        difficulty?={corrida.difficulty}
+                        link?={corrida.link}
+                    />
+                </div>
+            ))}
+        </div>
+        <script is:inline>
+            const input = document.getElementById('busca-corrida');
+            const btn = document.getElementById('btn-buscar-corrida');
+            const cards = document.querySelectorAll('.corrida-card');
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                const termo = input.value.trim().toLowerCase();
+                let count = 0;
+                cards.forEach(card => {
+                    const nome = card.getAttribute('data-name');
+                    if (!termo || (nome && nome.includes(termo))) {
+                        card.style.display = '';
+                        count++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+                // Atualiza contador de corridas encontradas
+                const contador = document.querySelector('.text-gray-600.dark\\:text-gray-400.mt-2');
+                if (contador) {
+                    contador.textContent = `${count} corridas encontradas • Página 1 de 1`;
+                }
+            });
+        </script>
+    </section>
+</Layout>

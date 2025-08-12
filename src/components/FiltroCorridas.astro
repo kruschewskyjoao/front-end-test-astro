@@ -1,0 +1,79 @@
+---
+export interface Props {
+    types: string[];
+    countries: string[];
+    distances: string[];
+}
+
+const { types, countries, distances } = Astro.props;
+---
+
+<div class="bg-white p-6 rounded-lg shadow-md mb-8">
+    <h2 class="text-xl font-bold mb-4">Filtrar Corridas</h2>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+            <h3 class="font-medium mb-2">Tipo de Corrida</h3>
+            <div class="space-y-2">
+                {
+                    types.map((type) => (
+                        <label class="flex items-center">
+                            <input
+                                type="checkbox"
+                                class="form-checkbox h-4 w-4 text-blue-600"
+                            />
+                            <span class="ml-2 text-gray-700">{type}</span>
+                        </label>
+                    ))
+                }
+            </div>
+        </div>
+
+        <div>
+            <h3 class="font-medium mb-2">País</h3>
+            <div class="space-y-2">
+                {
+                    countries.map((country) => (
+                        <label class="flex items-center">
+                            <input
+                                type="checkbox"
+                                class="form-checkbox h-4 w-4 text-blue-600"
+                            />
+                            <span class="ml-2 text-gray-700">{country}</span>
+                        </label>
+                    ))
+                }
+            </div>
+        </div>
+
+        <div>
+            <h3 class="font-medium mb-2">Distâncias</h3>
+            <div class="space-y-2">
+                {
+                    distances.map((distance) => (
+                        <label class="flex items-center">
+                            <input
+                                type="checkbox"
+                                class="form-checkbox h-4 w-4 text-blue-600"
+                            />
+                            <span class="ml-2 text-gray-700">{distance}</span>
+                        </label>
+                    ))
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-6 flex justify-end">
+        <button
+            class="bg-gray-200 text-gray-800 px-4 py-2 rounded-md mr-2 hover:bg-gray-300 transition-colors"
+        >
+            Limpar Filtros
+        </button>
+        <button
+            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+        >
+            Aplicar Filtros
+        </button>
+    </div>
+</div>

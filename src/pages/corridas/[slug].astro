@@ -1,0 +1,405 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import corridasData from "../../data/corridas.json";
+
+export function getStaticPaths() {
+    return corridasData.map((corrida) => {
+        // Criar slug a partir do nome
+        const slug = corrida.name
+            .toLowerCase()
+            .replace(/[^\w\s-]/g, "") // Remover caracteres especiais
+            .replace(/\s+/g, "-") // Substituir espaços por hífens
+            .trim();
+
+        return {
+            params: { slug },
+            props: { corrida },
+        };
+    });
+}
+
+const { slug } = Astro.params;
+const corrida = corridasData.find((c) => {
+    const corridaSlug = c.name
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .trim();
+
+    return corridaSlug === slug;
+});
+
+if (!corrida) {
+    return Astro.redirect("/404");
+}
+
+const imageUrl =
+    corrida.images && corrida.images.length > 0
+        ? corrida.images[0]
+        : "/placeholder.jpg";
+const targetUrl = corrida.detailsUrl || corrida.link || "#";
+
+// Determinar dificuldade
+let difficulty = "Médio";
+if (corrida.distances && corrida.distances.length > 0) {
+    const maxDistance = Math.max(
+        ...corrida.distances.map((d) => {
+            const match = d.match(/(\d+)/);
+            return match ? parseInt(match[0]) : 0;
+        }),
+    );
+
+    if (maxDistance <= 5) difficulty = "Fácil";
+    else if (maxDistance <= 10) difficulty = "Médio";
+    else if (maxDistance <= 21) difficulty = "Difícil";
+    else difficulty = "Extremo";
+}
+
+const getDifficultyColor = (diff: string) => {
+    switch (diff) {
+        case "Fácil":
+            return "bg-green-100 text-green-800";
+        case "Médio":
+            return "bg-yellow-100 text-yellow-800";
+        case "Difícil":
+            return "bg-orange-100 text-orange-800";
+        case "Extremo":
+            return "bg-red-100 text-red-800";
+        default:
+            return "bg-gray-100 text-gray-800";
+    }
+};
+
+const difficultyColor = getDifficultyColor(difficulty);
+
+// Structured data para SEO
+const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "SportsEvent",
+    name: corrida.name,
+    description:
+        corrida.description || `Detalhes sobre a corrida ${corrida.name}`,
+    startDate: corrida.date,
+    location: {
+        "@type": "Place",
+        name: corrida.country || "Brasil",
+        address: {
+            "@type": "PostalAddress",
+            addressCountry: corrida.country || "BR",
+        },
+    },
+    image: imageUrl,
+    offers: {
+        "@type": "Offer",
+        price: corrida.price ? corrida.price.replace(/[^0-9,]/g, "") : "0",
+        priceCurrency: "BRL",
+        availability:
+            corrida.saleStatus === "EM VENDAS"
+                ? "https://schema.org/InStock"
+                : "https://schema.org/SoldOut",
+        url: targetUrl,
+    },
+};
+---
+
+<Layout
+    title={`${corrida.name} - Corridas Brasil`}
+    description={corrida.description ||
+        `Detalhes sobre a corrida ${corrida.name}`}
+    image={imageUrl}
+    structuredData={structuredData}
+>
+    <div class="bg-white rounded-lg shadow-md overflow-hidden">
+        <div class="relative h-64 md:h-96 overflow-hidden">
+            <img
+                src={imageUrl}
+                alt={corrida.name}
+                class="w-full h-full object-cover"
+            />
+            {
+                corrida.saleStatus && (
+                    <div class="absolute top-4 right-4 bg-green-500 text-white px-3 py-1 rounded-full text-sm font-semibold">
+                        {corrida.saleStatus}
+                    </div>
+                )
+            }
+            <div class="absolute top-4 left-4">
+                <span
+                    class={`text-xs px-2 py-1 rounded-full font-medium ${difficultyColor}`}
+                >
+                    {difficulty}
+                </span>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div class="flex flex-wrap justify-between items-start mb-4">
+                <h1 class="text-3xl font-bold text-gray-800 mb-2">
+                    {corrida.name}
+                </h1>
+                {
+                    corrida.country && (
+                        <span class="text-gray-500 flex items-center mb-2">
+                            <svg
+                                class="w-5 h-5 mr-1"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                            {corrida.country}
+                        </span>
+                    )
+                }
+            </div>
+
+            {
+                corrida.type && (
+                    <div class="mb-4">
+                        <span class="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full">
+                            {corrida.type}
+                        </span>
+                    </div>
+                )
+            }
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div class="flex items-center text-gray-700">
+                    <svg
+                        class="w-6 h-6 mr-3 text-blue-600"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                        xmlns="http://www.w3.org/2000/svg"
+                    >
+                        <path
+                            fill-rule="evenodd"
+                            d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                    <span class="text-lg">{corrida.date}</span>
+                </div>
+
+                {
+                    corrida.price && (
+                        <div class="flex items-center text-gray-700">
+                            <svg
+                                class="w-6 h-6 mr-3 text-blue-600"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+                                <path
+                                    fill-rule="evenodd"
+                                    d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z"
+                                    clip-rule="evenodd"
+                                />
+                            </svg>
+                            <span class="text-lg font-semibold text-blue-600">
+                                {corrida.price}
+                            </span>
+                        </div>
+                    )
+                }
+            </div>
+
+            {
+                corrida.distances && corrida.distances.length > 0 && (
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold mb-3">
+                            Distâncias Disponíveis
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            {corrida.distances.map((distance) => (
+                                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">
+                                    {distance}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                )
+            }
+
+            <div class="mb-6">
+                <h3 class="text-xl font-semibold mb-3">Descrição</h3>
+                <p class="text-gray-700 whitespace-pre-line">
+                    {corrida.description || "Descrição não disponível."}
+                </p>
+            </div>
+
+            <div class="mb-8">
+                <h3 class="text-xl font-semibold mb-3">
+                    Informações Adicionais
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">
+                            Dificuldade
+                        </h4>
+                        <span
+                            class={`text-xs px-2 py-1 rounded-full font-medium ${difficultyColor}`}
+                        >
+                            {difficulty}
+                        </span>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">
+                            Tipo de Pista
+                        </h4>
+                        <span class="text-gray-600">Asfalto</span>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">
+                            Limites de Tempo
+                        </h4>
+                        <span class="text-gray-600">6 horas</span>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-700 mb-2">
+                            Kit do Corredor
+                        </h4>
+                        <span class="text-gray-600"
+                            >Camiseta técnica, medalha e chip</span
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-wrap gap-4">
+                <a
+                    href={targetUrl}
+                    class="flex-1 bg-blue-600 text-white text-center px-6 py-3 rounded-md hover:bg-blue-700 transition-colors text-lg font-semibold"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Inscreva-se Agora
+                </a>
+                {
+                    corrida.whatsapp && (
+                        <a
+                            href={corrida.whatsapp}
+                            class="bg-green-500 text-white px-6 py-3 rounded-md hover:bg-green-600 transition-colors flex items-center text-lg font-semibold"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <svg
+                                class="w-6 h-6 mr-2"
+                                fill="currentColor"
+                                viewBox="0 0 20 20"
+                                xmlns="http://www.w3.org/2000/svg"
+                            >
+                                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
+                                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
+                            </svg>
+                            WhatsApp
+                        </a>
+                    )
+                }
+            </div>
+        </div>
+    </div>
+
+    {
+        corrida.images && corrida.images.length > 1 && (
+            <div class="mt-12">
+                <h2 class="text-2xl font-bold mb-6">Galeria de Fotos</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {corrida.images.slice(1).map((image, index) => (
+                        <div class="relative h-64 rounded-lg overflow-hidden shadow-md">
+                            <img
+                                src={image}
+                                alt={`${corrida.name} - Foto ${index + 2}`}
+                                class="w-full h-full object-cover"
+                                loading="lazy"
+                            />
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )
+    }
+
+    <div class="mt-12">
+        <h2 class="text-2xl font-bold mb-6">Vídeos</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="aspect-w-16 aspect-h-9">
+                <iframe
+                    src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                    class="w-full h-64 md:h-80 rounded-lg shadow-md"></iframe>
+            </div>
+            <div class="aspect-w-16 aspect-h-9">
+                <iframe
+                    src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                    frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen
+                    class="w-full h-64 md:h-80 rounded-lg shadow-md"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-12">
+        <h2 class="text-2xl font-bold mb-6">Outras Corridas</h2>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {
+                corridasData
+                    .filter((c) => c.name !== corrida.name)
+                    .slice(0, 3)
+                    .map((outraCorrida) => (
+                        <a
+                            href={`/corridas/${outraCorrida.name
+                                .toLowerCase()
+                                .replace(/[^\w\s-]/g, "")
+                                .replace(/\s+/g, "-")
+                                .trim()}`}
+                            class="group flex flex-col gap-0 rounded-xl border border-gray-200 bg-white shadow-sm hover:shadow-lg transition-shadow duration-200 overflow-hidden focus:outline-none focus:ring-2 focus:ring-green-500"
+                            style="text-decoration: none;"
+                        >
+                            <img
+                                src={
+                                    outraCorrida.images &&
+                                    outraCorrida.images.length > 0
+                                        ? outraCorrida.images[0]
+                                        : "/placeholder.jpg"
+                                }
+                                alt={outraCorrida.name}
+                                class="w-full aspect-video object-cover rounded-t-xl"
+                                loading="lazy"
+                            />
+                            <div class="flex flex-col items-center p-4 space-y-2 text-center">
+                                <h3 class="text-lg font-bold">{outraCorrida.name}</h3>
+                                <p class="text-sm text-gray-500">{outraCorrida.country || "Brasil"}</p>
+                                <div class="flex items-center gap-2 justify-center">
+                                    {outraCorrida.type && (
+                                        <span class="inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium bg-green-100 text-green-700 border-transparent">
+                                            {outraCorrida.type}
+                                        </span>
+                                    )}
+                                    {outraCorrida.distances && (
+                                        <span class="text-xs text-gray-600">
+                                            {outraCorrida.distances.join(", ")}
+                                        </span>
+                                    )}
+                                </div>
+                                {outraCorrida.price && (
+                                    <p class="text-sm font-medium text-green-600">{outraCorrida.price}</p>
+                                )}
+                                <p class="text-sm text-gray-600">{outraCorrida.date}</p>
+                                <span class="mt-2 inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition-colors hover:bg-blue-700">
+                                    Ver detalhes
+                                </span>
+                            </div>
+                        </a>
+                    ))
+            }
+        </div>
+    </div>
+</Layout>
